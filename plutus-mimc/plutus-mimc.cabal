@@ -8,7 +8,9 @@ synopsis:      "A plutus implementation of the mimc sponge function"
 build-type:    Simple
 
 library
-  exposed-modules:  Plutus.Crypto.BlsUtils
+  exposed-modules:
+    Plutus.Crypto.BlsUtils
+    Plutus.Crypto.MiMC
 
   -- Plutus.Crypto.MiMC
   hs-source-dirs:   src

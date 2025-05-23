@@ -2,7 +2,14 @@ module Bls.Run (
     runBls,
 ) where
 
-import Bls.Scripts (blsAddScalarListScript, listOfSizedByteStrings)
+import Bls.Scripts (
+    blsAddScalarListScript,
+    blsMiMCSpongeListScript,
+    blsMulScalarListScript,
+    blsNegateScalarListScript,
+    blsRecipScalarListScript,
+    listOfSizedByteStrings,
+ )
 import GHC.ByteOrder (ByteOrder (..))
 import Plutus.Crypto.BlsUtils (mkScalar)
 import PlutusTx.Builtins (byteStringToInteger)
@@ -13,16 +20,25 @@ import PlutusBenchmark.Common (TestSize (..), printHeader, printSizeStatistics)
 import System.IO (Handle)
 import Text.Printf (hPrintf)
 
-printCostsBls :: Handle -> Integer -> IO ()
-printCostsBls h n =
-    let script = blsAddScalarListScript . map (mkScalar . byteStringToInteger BigEndian . toBuiltin) $ listOfSizedByteStrings n 31
-     in printSizeStatistics h (TestSize n) script
-
 runBls :: Handle -> IO ()
 runBls h = do
-    hPrintf h "\n\n"
+    hPrintf h "\n\nBLS Scalar Field Operation Benchmarks\n\n"
 
-    hPrintf h "add a list of n scalars to each other (size 31 bytes) \n\n"
-    printHeader h
-    mapM_ (printCostsBls h) [2, 3, 4, 5, 6]
-    hPrintf h "\n\n"
+    let ns = [1 .. 10]
+
+    let bench opName scriptGen = do
+            hPrintf h "%s\n\n" opName
+            printHeader h
+            mapM_
+                ( \n -> do
+                    let inputs = map (mkScalar . byteStringToInteger BigEndian . toBuiltin) $ listOfSizedByteStrings n 31
+                    printSizeStatistics h (TestSize n) (scriptGen inputs)
+                )
+                ns
+            hPrintf h "\n"
+
+    bench "Addition of Scalars" blsAddScalarListScript
+    bench "Multiplication of Scalars" blsMulScalarListScript
+    bench "Negation of Scalars" blsNegateScalarListScript
+    bench "Reciprocal (Inverse) of Scalars" blsRecipScalarListScript
+    bench "MiMC Sponge of Scalars" blsMiMCSpongeListScript

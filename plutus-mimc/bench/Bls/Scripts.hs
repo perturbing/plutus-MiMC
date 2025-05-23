@@ -1,17 +1,23 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module Bls.Scripts (
     blsAddScalarListScript,
+    blsNegateScalarListScript,
+    blsMulScalarListScript,
+    blsRecipScalarListScript,
+    blsMiMCSpongeListScript,
     listOfSizedByteStrings,
 ) where
 
 import PlutusTx (compile, getPlcNoAnn, liftCodeDef, unsafeApplyCode)
-import PlutusTx.List (foldr)
-import PlutusTx.Prelude (Integer, ($), (+), (.))
+import PlutusTx.List (foldr, map)
+import PlutusTx.Prelude (Integer, ($), (*), (+), (.))
 
-import Plutus.Crypto.BlsUtils (Scalar (..), mkScalar)
+import Plutus.Crypto.BlsUtils (Scalar (..), mkScalar, negateScalar, recip)
+import Plutus.Crypto.MiMC (mimcFeistel, mimcSponge)
 import PlutusCore (DefaultFun, DefaultUni)
 import qualified UntypedPlutusCore as UPLC
 
@@ -25,6 +31,31 @@ blsAddScalarListScript :: [Scalar] -> UPLC.Program UPLC.NamedDeBruijn DefaultUni
 blsAddScalarListScript xs =
     getPlcNoAnn
         $ $$(compile [||foldr (+) (mkScalar 0)||])
+        `unsafeApplyCode` liftCodeDef xs
+
+blsMulScalarListScript :: [Scalar] -> UPLC.Program UPLC.NamedDeBruijn DefaultUni DefaultFun ()
+blsMulScalarListScript xs =
+    getPlcNoAnn
+        $ $$(compile [||foldr (*) (mkScalar 1)||])
+        `unsafeApplyCode` liftCodeDef xs
+
+blsNegateScalarListScript :: [Scalar] -> UPLC.Program UPLC.NamedDeBruijn DefaultUni DefaultFun ()
+blsNegateScalarListScript xs =
+    getPlcNoAnn
+        $ $$(compile [||map negateScalar||])
+        `unsafeApplyCode` liftCodeDef xs
+
+blsRecipScalarListScript :: [Scalar] -> UPLC.Program UPLC.NamedDeBruijn DefaultUni DefaultFun ()
+blsRecipScalarListScript xs =
+    getPlcNoAnn
+        $ $$(compile [||map (recip @Scalar)||])
+        `unsafeApplyCode` liftCodeDef xs
+
+blsMiMCSpongeListScript :: [Scalar] -> UPLC.Program UPLC.NamedDeBruijn DefaultUni DefaultFun ()
+blsMiMCSpongeListScript xs =
+    getPlcNoAnn
+        -- \$ $$(compile [|| \x -> mimcFeistel x (mkScalar 5) (mkScalar 10, mkScalar 5) ||])
+        $ $$(compile [||mimcSponge||])
         `unsafeApplyCode` liftCodeDef xs
 
 {-# NOINLINE listOfSizedByteStrings #-}
